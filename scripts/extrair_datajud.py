@@ -1,15 +1,22 @@
 """
 ===============================================================================
-JusMetrIA - Script de Extração da API Pública DataJud (CNJ)
+JusMetrIA - Script de Extração da API Pública DataJud (CNJ / TJBA)
 ===============================================================================
-Este script realiza a coleta dos processos judiciais das Varas de Relações de
-Consumo da Comarca de Salvador (TJBA) referentes ao período de 2020 a 2024.
+Este script realiza a coleta automatizada dos metadados processuais das 20 Varas
+de Relações de Consumo da Comarca de Salvador (TJBA) para o período de 2020 a 2024.
 
-Regra de Negócio Crucial (Hierarquia de Sentenças):
-A classificação dos desfechos obedece à seguinte hierarquia de prioridade:
-1. Sentenças de Mérito (Procedente = 219, Parcialmente Procedente = 221, Improcedente = 220)
-   SEMPRE prevalecem sobre a baixa definitiva.
+Regra de Negócio Crucial (Hierarquia de Sentenças de Mérito):
+A classificação dos desfechos obedece à seguinte ordem de precedência:
+1. Sentenças com Resolução de Mérito (Procedente = 219, Parcialmente Procedente = 221,
+   Improcedente = 220) SEMPRE prevalecem sobre arquivamento simples ou baixa.
 2. Arquivamento / Baixa Definitiva (246 ou 196) apenas se não houver sentença de mérito.
+
+Pré-requisitos:
+1. Crie um arquivo `.env` na raiz do projeto contendo sua chave pública:
+   DATAJUD_API_KEY=c3J0cF9zb21lX2tleQ==
+2. Instale as dependências:
+   pip install requests pandas python-dotenv
+===============================================================================
 """
 
 import os
@@ -19,10 +26,19 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 
+# Carregar variáveis de ambiente do arquivo .env
 load_dotenv()
 
 URL_DATAJUD = "https://api-publica.datajud.cnj.jus.br/api_publica_tjba/_search"
-API_KEY = os.environ.get("DATAJUD_API_KEY", "")
+API_KEY = os.environ.get("DATAJUD_API_KEY", "").strip()
+
+if not API_KEY:
+    print("\n" + "=" * 75)
+    print(" [AVISO CRÍTICO] Chave de API do DataJud não configurada!")
+    print(" Por favor, crie o arquivo '.env' na raiz do projeto com:")
+    print(" DATAJUD_API_KEY=sua_chave_aqui")
+    print(" (Você pode obter sua chave pública gratuitamente no portal do CNJ/DataJud)")
+    print("=" * 75 + "\n")
 
 HEADERS = {
     "Authorization": f"APIKey {API_KEY}",
@@ -31,7 +47,7 @@ HEADERS = {
 
 
 def classificar_movimentos(movimentos: list) -> str:
-    """Classifica o desfecho processual respeitando a hierarquia de mérito."""
+    """Classifica o desfecho processual respeitando a hierarquia de mérito do CPC/CNJ."""
     codigos = set()
     for m in movimentos:
         if isinstance(m, dict):
@@ -39,7 +55,7 @@ def classificar_movimentos(movimentos: list) -> str:
             if codigo is not None:
                 try:
                     codigos.add(int(codigo))
-                except ValueError:
+                except (ValueError, TypeError):
                     pass
             
     # HIERARQUIA DE PRIORIDADE: Mérito SEMPRE prevalece sobre arquivamento simples
@@ -56,8 +72,8 @@ def classificar_movimentos(movimentos: list) -> str:
 
 
 def extrair_ano(ano: int) -> pd.DataFrame:
-    """Extrai todos os processos autuados em um determinado ano em Salvador."""
-    print(f"[*] Coletando dados do ano {ano}...")
+    """Extrai todos os processos de relações de consumo autuados no ano especificado."""
+    print(f"[*] Coletando processos autuados em {ano} (Salvador/BA)...")
     query_base = {
         "size": 200,
         "sort": [{"dataAjuizamento": "asc"}],
@@ -67,7 +83,7 @@ def extrair_ano(ano: int) -> pd.DataFrame:
                     {"match_phrase": {"orgaoJulgador.nome": "VARA DE RELACOES DE CONSUMO"}}
                 ],
                 "filter": [
-                    {"term": {"orgaoJulgador.codigoMunicipioIBGE": 2927408}}, # Salvador - BA
+                    {"term": {"orgaoJulgador.codigoMunicipioIBGE": 2927408}},  # Salvador - BA
                     {"range": {"dataAjuizamento": {"gte": f"{ano}0101000000", "lte": f"{ano}1231235959"}}}
                 ]
             }
@@ -78,8 +94,8 @@ def extrair_ano(ano: int) -> pd.DataFrame:
     linhas_ano = []
     t0 = time.time()
     lote = 0
-    
     max_retries = 3
+    
     while True:
         if search_after:
             query_base["search_after"] = search_after
@@ -92,9 +108,11 @@ def extrair_ano(ano: int) -> pd.DataFrame:
                 if res.status_code == 200:
                     success = True
                     break
+                elif res.status_code == 401 or res.status_code == 403:
+                    print(f"    [ERRO DE AUTENTICAÇÃO] HTTP {res.status_code}. Verifique sua DATAJUD_API_KEY no .env")
+                    return pd.DataFrame(linhas_ano)
                 else:
-                    print(f"    [!] HTTP {res.status_code} para {ano}. Aguardando 5s...")
-                    print(f"    [!] Detalhes: {res.text}")
+                    print(f"    [!] HTTP {res.status_code} para {ano}. Tentativa {retries + 1}/{max_retries}...")
             except Exception as e:
                 print(f"    [!] Conexão instável para {ano}: {e}. Aguardando 5s...")
             
@@ -102,7 +120,7 @@ def extrair_ano(ano: int) -> pd.DataFrame:
             retries += 1
             
         if not success:
-            print(f"    [!] Limite de tentativas excedido para {ano}. Abortando lote.")
+            print(f"    [!] Limite de tentativas excedido para o ano {ano}.")
             break
             
         dados = res.json()
@@ -133,10 +151,10 @@ def extrair_ano(ano: int) -> pd.DataFrame:
             
         lote += 1
         search_after = hits[-1]['sort']
-        if lote % 5 == 0:
-            print(f"    [{ano}] Lote {lote}: {len(linhas_ano):,} processos extraídos em {time.time()-t0:.1f}s")
+        if lote % 10 == 0:
+            print(f"    [{ano}] Lote {lote}: {len(linhas_ano):,} processos acumulados ({time.time()-t0:.1f}s)")
             
-    print(f"[+] Concluído {ano}: Total de {len(linhas_ano):,} processos em {time.time()-t0:.1f}s")
+    print(f"[+] Ano {ano} finalizado: {len(linhas_ano):,} processos coletados em {time.time()-t0:.1f}s.")
     return pd.DataFrame(linhas_ano)
 
 
@@ -144,6 +162,11 @@ def main():
     workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(workspace_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
+    
+    print("=" * 75)
+    print(" INICIANDO EXTRAÇÃO DE PROCESSOS DO DATAJUD (TJBA - CONSUMO)")
+    print(" Período Alvo: 2020 a 2024")
+    print("=" * 75)
     
     dfs = []
     for ano in range(2020, 2025):
@@ -154,15 +177,15 @@ def main():
     out_csv = os.path.join(data_dir, "dataset_relacoes_consumo.csv")
     df_completo.to_csv(out_csv, index=False, encoding='utf-8')
     
-    print(f"\n=========================================================================")
-    print(f"            EXTRAÇÃO DATAJUD FINALIZADA COM SUCESSO!                     ")
-    print(f"=========================================================================")
+    print("\n" + "=" * 75)
+    print(" EXTRAÇÃO CONCLUÍDA COM SUCESSO!")
+    print("=" * 75)
     print(f" Arquivo salvo em: {out_csv}")
     print(f" Total de processos extraídos: {df_completo.shape[0]:,}")
     if not df_completo.empty and 'desfecho' in df_completo.columns:
-        print(f"\n Distribuição dos Desfechos:")
+        print("\n Distribuição dos Desfechos:")
         print(df_completo['desfecho'].value_counts())
-    print(f"=========================================================================\n")
+    print("=" * 75 + "\n")
 
 
 if __name__ == '__main__':

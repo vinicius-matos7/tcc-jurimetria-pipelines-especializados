@@ -2,7 +2,7 @@
 
 > **Linha Metodológica (Abordagem 2):** Modelagem preditiva com pipelines especializados adaptados à hipótese indutiva de cada família algorítmica (*Regressão Harmônica de Fourier* para modelos lineares e *Representação Densa/Compacta* para árvores de decisão).
 
-Este repositório contém a pesquisa, os datasets, os scripts de coleta da API DataJud (CNJ), os notebooks de experimentação e o artigo em LaTeX (padrão IEEE) referente ao Trabalho de Conclusão de Curso (TCC) no curso de Análise e Desenvolvimento de Sistemas (ADS) do Instituto Federal da Bahia (IFBA - Salvador).
+Este repositório contém o pipeline computacional, os dados brutos oficiais extraídos do DataJud (CNJ), os scripts de coleta, os notebooks de experimentação e os resultados analíticos referentes ao Trabalho de Conclusão de Curso (TCC) no curso de Análise e Desenvolvimento de Sistemas (ADS) do Instituto Federal da Bahia (IFBA - Salvador).
 
 ---
 
@@ -11,17 +11,13 @@ Este repositório contém a pesquisa, os datasets, os scripts de coleta da API D
 ```text
 tcc-jurimetria-pipelines-especializados/
 ├── jurimetria.ipynb                   # NOTEBOOK MESTRE (Pipelines Especializados, Treinamento e Diagnósticos)
-├── overleaf_main.tex                  # Artigo científico diagramado em LaTeX (IEEEtran Conference)
-├── arvore.png                         # Figura 2 referenciada no artigo científico
-├── vies_variancia.png                 # Figura 1 referenciada no artigo científico
 ├── requirements.txt                   # Dependências e bibliotecas Python
 ├── README.md                          # Documentação e instruções de execução
 ├── .env.example                       # Modelo de configuração de variáveis de ambiente
-├── .gitignore                         # Regras de exclusão (bibliografia/ e dados sensíveis)
+├── .gitignore                         # Regras de exclusão de arquivos locais/sensíveis
 │
-├── data/                              # Datasets processuais extraídos da API pública do DataJud
-│   ├── dataset_relacoes_consumo.csv   # Base primária consolidada (2020 a 2024)
-│   └── dataset_processado.csv         # Base higienizada com filtragem de mérito
+├── data/                              # Base de dados oficial extraída da API DataJud
+│   └── dataset_relacoes_consumo.csv   # Dataset primário consolidado (2020 a 2024 - 199.105 registros)
 │
 ├── resultados/                        # Gráficos analíticos oficiais exportados em alta resolução (300 DPI)
 │   ├── comparacao_feature_importance_3_modelos.png
@@ -67,7 +63,7 @@ Em vez de impor uma representação de dados uniforme que fragilize o sorteio de
 
 ### 1. Clonar e Acessar o Repositório
 ```bash
-git clone https://github.com/SEU_USUARIO/tcc-jurimetria-pipelines-especializados.git
+git clone https://github.com/vinicius-matos7/tcc-jurimetria-pipelines-especializados.git
 cd tcc-jurimetria-pipelines-especializados
 ```
 
@@ -83,18 +79,22 @@ pip install -r requirements.txt
 ```
 
 ### 3. Extração da API DataJud (Opcional)
-Para executar nova coleta de dados:
+O dataset bruto já se encontra versionado em `data/dataset_relacoes_consumo.csv`. Caso deseje reexecutar a coleta diretamente dos servidores do CNJ/TJBA:
 1. Copie o arquivo `.env.example` para `.env`:
    ```bash
    cp .env.example .env
    ```
-2. Insira sua chave pública da API DataJud no `.env`.
-3. Execute o script:
+2. Adicione sua chave de API pública do DataJud no `.env`:
+   ```text
+   DATAJUD_API_KEY=sua_chave_aqui
+   ```
+3. Execute o script de extração:
    ```bash
    python scripts/extrair_datajud.py
    ```
 
-### 4. Executar o Notebook
+### 4. Executar o Notebook Mestre
+Inicie o Jupyter Notebook para reproduzir todas as análises, treinar os modelos e gerar os gráficos:
 ```bash
 jupyter notebook jurimetria.ipynb
 ```

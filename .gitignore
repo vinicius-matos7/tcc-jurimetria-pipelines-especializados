@@ -1,7 +1,23 @@
 # ==============================================================================
-# 1. Pastas Restritas / Excluídas do Repositório (Diretriz do Aluno)
+# 1. Pastas e Arquivos Locais Excluídos do Repositório GitHub
 # ==============================================================================
+# Literatura e PDFs locais
 bibliografia/
+
+# Artigo em LaTeX e Figuras do Overleaf (mantidos localmente)
+overleaf_main.tex
+arvore.png
+vies_variancia.png
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Dataset secundário / processado (gerado pelo notebook)
+data/dataset_processado.csv
 
 # ==============================================================================
 # 2. Segurança e Variáveis de Ambiente
@@ -19,14 +35,3 @@ __pycache__/
 venv/
 env/
 .ipynb_checkpoints/
-
-# ==============================================================================
-# 4. Arquivos Temporários de Compilação LaTeX Local
-# ==============================================================================
-*.aux
-*.bbl
-*.blg
-*.log
-*.out
-*.synctex.gz
-*.toc
