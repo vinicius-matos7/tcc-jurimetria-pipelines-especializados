@@ -22,9 +22,11 @@ vies_variancia.png
 
 # Arquivos de apoio, backups locais e relatórios de auditoria
 scratch/
-jurimetria_backup.ipynb
-subagent_report.txt
-audit_report_full_round2.txt
+*backup*.ipynb
+*backup*
+*report*.txt
+audit_report*.txt
+subagent_report*.txt
 
 # Dataset secundário / processado (gerado pelo notebook)
 data/dataset_processado.csv
