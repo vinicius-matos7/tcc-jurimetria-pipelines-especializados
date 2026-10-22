@@ -3,9 +3,11 @@
 # ==============================================================================
 # Literatura e PDFs locais
 bibliografia/
+*.pdf
 
 # Artigo em LaTeX e Figuras do Overleaf (mantidos localmente)
 overleaf_main.tex
+*.tex
 arvore.png
 vies_variancia.png
 *.aux
@@ -15,6 +17,14 @@ vies_variancia.png
 *.out
 *.synctex.gz
 *.toc
+*.fls
+*.fdb_latexmk
+
+# Arquivos de apoio, backups locais e relatórios de auditoria
+scratch/
+jurimetria_backup.ipynb
+subagent_report.txt
+audit_report_full_round2.txt
 
 # Dataset secundário / processado (gerado pelo notebook)
 data/dataset_processado.csv
